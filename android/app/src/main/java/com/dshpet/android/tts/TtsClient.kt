@@ -17,6 +17,9 @@ import java.util.concurrent.TimeUnit
 /**
  * MiniMax 语音合成（TTS）客户端 —— 1:1 对接 MiniMax 官方同步合成接口。
  *
+ * 贡献者：yvqiuya —— MiniMax TTS 语音合成系统接入与实现
+ * 桌宠本体著作权归原作者（MerZlin / OTFiles）所有。
+ *
  * 接口：POST {baseUrl}/v1/t2a_v2
  *   中国站：https://api.minimaxi.com
  *   国际站：https://api.minimax.io

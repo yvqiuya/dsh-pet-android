@@ -10,7 +10,8 @@ import java.util.concurrent.TimeUnit
  */
 object Updater {
 
-    private const val REPO = "OTFiles/dsh-pet-inAndroid"
+    // 更新检查指向实际发布修复版 APK 的仓库（上游 OTFiles 那边没有本仓库的修复包）
+    private const val REPO = "yvqiuya/dsh-pet-android"
     const val RELEASES_URL = "https://github.com/$REPO/releases"
 
     data class Release(val tag: String, val url: String)

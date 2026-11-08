@@ -1078,6 +1078,12 @@ private fun AiTab(ctx: android.content.Context, cfg: PetConfig, scope: kotlinx.c
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp),
                 )
+                Text(
+                    "MiniMax TTS 语音合成系统由 yvqiuya 接入实现 · 桌宠本体版权归原作者所有",
+                    fontSize = 10.5.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 2.dp),
+                )
             }
         }
 
@@ -1211,6 +1217,9 @@ private fun AboutTab(ctx: android.content.Context, cfg: PetConfig, scope: kotlin
             Text(
                 "本应用为 dsh-pet 桌面桌宠的 Android 移植版：透明悬浮窗显示在任意应用之上；" +
                         "素材在构建时由 WebM 重编码为旁路 alpha 视频，手机上无需任何额外组件。\n\n" +
+                        "原作与上游：桌面桌宠 dsh-pet-indesktop（MerZlin）、" +
+                        "Android 工程 dsh-pet-inAndroid（OTFiles）。\n" +
+                        "本移植版的问题修复与 MiniMax TTS 语音合成系统：yvqiuya。\n\n" +
                         "许可：MIT（见桌面端仓库 LICENSE）。",
                 fontSize = 12.sp,
                 lineHeight = 18.sp,

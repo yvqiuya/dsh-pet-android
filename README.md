@@ -7,6 +7,7 @@
 - **版本**：4.3.7（versionCode 437）
 - **SDK**：minSdk 28 / targetSdk 34 / compileSdk 34
 - **许可**：MIT（见 [LICENSE](LICENSE)，Copyright (c) 2026 MerZlin）
+- **贡献者**：[yvqiuya](https://github.com/yvqiuya) —— Android 移植版问题修复 + **MiniMax TTS 语音合成系统**接入
 
 桌面端源码保留在本仓库的 `pet/` 目录下（上游 Python 实现），Android 工程在 `android/`。
 
@@ -71,6 +72,12 @@ SHA-256 (证书) = df1c7d166c39804b538cbcd226e476e495983681b87cf36fa7fccd7afaa8b
 | `android/app/src/main/java/com/dshpet/android/chat/ChatViewModel.kt` | `speak()` / `stopSpeaking()`，回复完成后自动朗读 |
 | `android/app/src/main/java/com/dshpet/android/data/PetConfig.kt` | `tts_*` 配置项读写 |
 | `android/app/src/main/java/com/dshpet/android/MainActivity.kt` | 设置页「语音合成」分区 |
+
+> **署名**：本节的 MiniMax TTS 语音合成系统由 [yvqiuya](https://github.com/yvqiuya) 接入与实现。
+> 桌宠本体、桌面版与 Android 工程上游的著作权仍归原作者（MerZlin / OTFiles）所有。
+
+> App 内「设置 → 关于 → 说明」里也写了这行署名；该页的「GitHub 仓库与 Releases」与「检查更新」
+> 已指向本仓库 `yvqiuya/dsh-pet-android`（上游 OTFiles 那边没有带修复的包）。
 
 
 ---
@@ -267,6 +274,8 @@ docs/  integrations/  packaging/  scripts/  tests/
 
 - 桌宠桌面版：[MerZlin/dsh-pet-indesktop](https://github.com/MerZlin/dsh-pet-indesktop)
 - Android 工程上游：[OTFiles/dsh-pet-inAndroid](https://github.com/OTFiles/dsh-pet-inAndroid)
+- **MiniMax TTS 语音合成系统**：由 [yvqiuya](https://github.com/yvqiuya) 接入与实现
+- Android 移植版问题修复（聊天 null 噪音 / 动画 Source error / ComposeHostOwner 单例 / 素材名还原）：由 [yvqiuya](https://github.com/yvqiuya) 完成
 - MIT License，Copyright (c) 2026 MerZlin —— 见 [LICENSE](LICENSE)
 
 本仓库的改动同样以 MIT 许可发布。发布预编译 APK 时请保留 LICENSE 与本文件中的致谢。
