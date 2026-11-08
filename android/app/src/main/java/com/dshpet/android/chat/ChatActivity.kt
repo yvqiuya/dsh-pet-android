@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
@@ -21,6 +22,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Menu
@@ -53,6 +55,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -87,6 +90,10 @@ private fun ChatScreen(vm: ChatViewModel, blur: Boolean) {
     val current by vm.current.collectAsState()
     val streaming by vm.streaming.collectAsState()
     val streamText by vm.streamText.collectAsState()
+    val speaking by vm.ttsSpeaking.collectAsState()
+    val ttsStatus by vm.ttsStatus.collectAsState()
+    val cfg = PetConfig.get(LocalContext.current.applicationContext)
+    val ttsOn by cfg.flowBool("tts_enabled", false).collectAsState(initial = false)
     val messages = remember(current, streamText) { vm.displayedMessages() }
 
     var input by remember { mutableStateOf("") }
@@ -189,8 +196,23 @@ private fun ChatScreen(vm: ChatViewModel, blur: Boolean) {
                             }
                         }
                         items(messages, key = { it.ts to it.content.length }) { m ->
-                            MessageBubble(m, streaming && m === messages.lastOrNull())
+                            MessageBubble(
+                                m,
+                                streaming && m === messages.lastOrNull(),
+                                speaking,
+                                ttsOn,
+                                onSpeak = { vm.speak(it) },
+                                onStopSpeak = { vm.stopSpeaking() },
+                            )
                         }
+                    }
+                    ttsStatus?.let {
+                        Text(
+                            it,
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp),
+                        )
                     }
                     InputBar(
                         input = input,
@@ -209,7 +231,14 @@ private fun ChatScreen(vm: ChatViewModel, blur: Boolean) {
 }
 
 @Composable
-private fun MessageBubble(m: ChatRepo.Message, isStreamingTail: Boolean) {
+private fun MessageBubble(
+    m: ChatRepo.Message,
+    isStreamingTail: Boolean,
+    speaking: Boolean,
+    ttsOn: Boolean,
+    onSpeak: (String) -> Unit,
+    onStopSpeak: () -> Unit,
+) {
     val isUser = m.role == "user"
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -242,6 +271,30 @@ private fun MessageBubble(m: ChatRepo.Message, isStreamingTail: Boolean) {
                         )
                         Spacer(Modifier.width(6.dp))
                         Text("思考中…", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+                // AI 回复的朗读按钮（仅在启用 TTS 时出现）
+                if (!isUser && ttsOn) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(top = 2.dp),
+                    ) {
+                        IconButton(
+                            onClick = { if (speaking) onStopSpeak() else onSpeak(m.content) },
+                            modifier = Modifier.size(28.dp),
+                        ) {
+                            Icon(
+                                if (speaking) Icons.Filled.Close else Icons.Filled.PlayArrow,
+                                contentDescription = if (speaking) "停止朗读" else "朗读",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(17.dp),
+                            )
+                        }
+                        Text(
+                            if (speaking) "正在朗读…" else "朗读",
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
                 }
             }

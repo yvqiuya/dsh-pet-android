@@ -28,6 +28,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Menu
@@ -258,6 +259,8 @@ class PetChatWindow(private val ctx: Context) {
         val current by vm.current.collectAsState()
         val streaming by vm.streaming.collectAsState()
         val streamText by vm.streamText.collectAsState()
+        val speaking by vm.ttsSpeaking.collectAsState()
+        val ttsOn by config.flowBool("tts_enabled", false).collectAsState(initial = false)
         val messages = remember(current, streamText) { vm.displayedMessages() }
         val listState = rememberLazyListState()
         LaunchedEffect(messages.size) {
@@ -284,14 +287,28 @@ class PetChatWindow(private val ctx: Context) {
                     }
                 }
                 items(messages, key = { it.ts to it.content.length }) { m ->
-                    MessageBubble(m, streaming && m === messages.lastOrNull())
+                    MessageBubble(
+                        m,
+                        streaming && m === messages.lastOrNull(),
+                        speaking,
+                        ttsOn,
+                        onSpeak = { vm.speak(it) },
+                        onStopSpeak = { vm.stopSpeaking() },
+                    )
                 }
             }
         }
     }
 
     @Composable
-    private fun MessageBubble(m: ChatRepo.Message, isStreamingTail: Boolean) {
+    private fun MessageBubble(
+        m: ChatRepo.Message,
+        isStreamingTail: Boolean,
+        speaking: Boolean,
+        ttsOn: Boolean,
+        onSpeak: (String) -> Unit,
+        onStopSpeak: () -> Unit,
+    ) {
         val isUser = m.role == "user"
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -322,6 +339,30 @@ class PetChatWindow(private val ctx: Context) {
                             )
                             Spacer(Modifier.width(6.dp))
                             Text("思考中…", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                    // AI 回复的朗读按钮（仅在启用 TTS 时出现）
+                    if (!isUser && ttsOn) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(top = 2.dp),
+                        ) {
+                            IconButton(
+                                onClick = { if (speaking) onStopSpeak() else onSpeak(m.content) },
+                                modifier = Modifier.size(26.dp),
+                            ) {
+                                Icon(
+                                    if (speaking) Icons.Filled.Close else Icons.Filled.PlayArrow,
+                                    contentDescription = if (speaking) "停止朗读" else "朗读",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(16.dp),
+                                )
+                            }
+                            Text(
+                                if (speaking) "正在朗读…" else "朗读",
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
                         }
                     }
                 }

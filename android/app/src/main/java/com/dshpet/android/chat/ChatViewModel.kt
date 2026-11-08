@@ -4,6 +4,8 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.dshpet.android.data.PetConfig
+import com.dshpet.android.tts.TtsClient
+import com.dshpet.android.tts.TtsPlayer
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -33,7 +35,16 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
     private val _busy = MutableStateFlow(false)
     val busy: StateFlow<Boolean> = _busy.asStateFlow()
 
+    /** TTS 朗读状态：null = 空闲；否则是当前提示（"正在合成…" / 错误信息） */
+    private val _ttsStatus = MutableStateFlow<String?>(null)
+    val ttsStatus: StateFlow<String?> = _ttsStatus.asStateFlow()
+
+    /** TTS 正在朗读（用于让按钮显示成"停止"） */
+    private val _ttsSpeaking = MutableStateFlow(false)
+    val ttsSpeaking: StateFlow<Boolean> = _ttsSpeaking.asStateFlow()
+
     private var streamJob: Job? = null
+    private var ttsJob: Job? = null
 
     init {
         refresh()
@@ -130,9 +141,80 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
                     _streamText.value = ""
                     _streaming.value = false
                     _busy.value = false
+                    // AI 回复完成后自动朗读（开关打开时）
+                    if (full.isNotBlank()) speak(full, auto = true)
                 },
             )
         }
+    }
+
+    // ================ 语音合成（MiniMax TTS） ================
+
+    /**
+     * 朗读一段文本。
+     * @param auto true 表示是"回复完成后自动朗读"，此时不打断用户正在进行的其它朗读
+     */
+    fun speak(text: String, auto: Boolean = false) {
+        val app = getApplication<Application>()
+        viewModelScope.launch {
+            if (!config.ttsEnabled()) {
+                if (!auto) _ttsStatus.value = "语音合成未启用（设置 → AI 对话 → 语音合成）"
+                return@launch
+            }
+            val key = config.ttsApiKey()
+            if (key.isBlank()) {
+                if (!auto) _ttsStatus.value = "未配置 MiniMax API Key"
+                return@launch
+            }
+            val clean = TtsClient.cleanForSpeech(text)
+            if (clean.isBlank()) return@launch
+            if (!auto) TtsPlayer.stop()
+            _ttsStatus.value = "正在合成语音…"
+            ttsJob?.cancel()
+            ttsJob = TtsClient.synthesize(
+                app,
+                TtsClient.TtsCfg(
+                    baseUrl = config.ttsBaseUrl(),
+                    apiKey = key,
+                    model = config.ttsModel(),
+                    voiceId = config.ttsVoice(),
+                    speed = config.ttsSpeed(),
+                    vol = config.ttsVol(),
+                    pitch = config.ttsPitch(),
+                    emotion = config.ttsEmotion(),
+                ),
+                clean,
+            ) { r ->
+                r.fold(
+                    onSuccess = { file ->
+                        _ttsSpeaking.value = true
+                        TtsPlayer.play(file) {
+                            _ttsSpeaking.value = false
+                            _ttsStatus.value = null
+                        }
+                        _ttsStatus.value = null
+                    },
+                    onFailure = { e ->
+                        _ttsSpeaking.value = false
+                        _ttsStatus.value = e.message ?: "语音合成失败"
+                    },
+                )
+            }
+        }
+    }
+
+    /** 停止朗读 */
+    fun stopSpeaking() {
+        ttsJob?.cancel()
+        ttsJob = null
+        TtsPlayer.stop()
+        _ttsSpeaking.value = false
+        _ttsStatus.value = null
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        stopSpeaking()
     }
 
     fun stopStream() {

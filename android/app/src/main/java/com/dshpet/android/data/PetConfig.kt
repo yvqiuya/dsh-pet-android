@@ -122,6 +122,16 @@ class PetConfig(private val ctx: Context) {
         private val K_CHAT_MAX_TOKENS = intPreferencesKey("chat_max_tokens")
         private val K_CHAT_TIMEOUT = intPreferencesKey("chat_timeout")
         private val K_CHAT_VERIFY_SSL = booleanPreferencesKey("chat_verify_ssl")
+        private val K_TTS_ENABLED = booleanPreferencesKey("tts_enabled")
+        private val K_TTS_AUTO_SPEAK = booleanPreferencesKey("tts_auto_speak")
+        private val K_TTS_API_KEY = stringPreferencesKey("tts_api_key")
+        private val K_TTS_BASE_URL = stringPreferencesKey("tts_base_url")
+        private val K_TTS_MODEL = stringPreferencesKey("tts_model")
+        private val K_TTS_VOICE = stringPreferencesKey("tts_voice")
+        private val K_TTS_SPEED = floatPreferencesKey("tts_speed")
+        private val K_TTS_VOL = floatPreferencesKey("tts_vol")
+        private val K_TTS_PITCH = intPreferencesKey("tts_pitch")
+        private val K_TTS_EMOTION = stringPreferencesKey("tts_emotion")
         private val K_BALANCE_REFRESH_MIN = intPreferencesKey("balance_refresh_minutes")
 
         // ---- 快捷启动 ----
@@ -177,6 +187,21 @@ class PetConfig(private val ctx: Context) {
     suspend fun chatMaxTokens() = read(K_CHAT_MAX_TOKENS, 2048)
     suspend fun chatTimeout() = read(K_CHAT_TIMEOUT, 60)
     suspend fun chatVerifySsl() = read(K_CHAT_VERIFY_SSL, true)
+
+    // ================ 语音合成（MiniMax TTS） ================
+    /** 总开关：关掉后所有朗读入口都不可用 */
+    suspend fun ttsEnabled() = read(K_TTS_ENABLED, false)
+    /** AI 回复完成后自动朗读 */
+    suspend fun ttsAutoSpeak() = read(K_TTS_AUTO_SPEAK, false)
+    suspend fun ttsApiKey() = read(K_TTS_API_KEY, "")
+    /** 中国站 api.minimaxi.com；国际站 api.minimax.io */
+    suspend fun ttsBaseUrl() = read(K_TTS_BASE_URL, "https://api.minimaxi.com")
+    suspend fun ttsModel() = read(K_TTS_MODEL, "speech-2.6-hd")
+    suspend fun ttsVoice() = read(K_TTS_VOICE, "female-shaonv")
+    suspend fun ttsSpeed() = read(K_TTS_SPEED, 1.0f)
+    suspend fun ttsVol() = read(K_TTS_VOL, 1.0f)
+    suspend fun ttsPitch() = read(K_TTS_PITCH, 0)
+    suspend fun ttsEmotion() = read(K_TTS_EMOTION, "neutral")
     suspend fun balanceRefreshMinutes() = read(K_BALANCE_REFRESH_MIN, 0)
 
     suspend fun quickLaunch(): List<Pair<String, String>> =
@@ -284,6 +309,18 @@ class PetConfig(private val ctx: Context) {
     suspend fun setBalanceRefreshMinutes(v: Int) = set("balance_refresh_minutes", v)
     suspend fun setQuickLaunch(v: Set<String>) = set("quick_launch_apps", v)
 
+    // ================ 语音合成（MiniMax TTS） ================
+    suspend fun setTtsEnabled(v: Boolean) = set("tts_enabled", v)
+    suspend fun setTtsAutoSpeak(v: Boolean) = set("tts_auto_speak", v)
+    suspend fun setTtsApiKey(v: String) = set("tts_api_key", v)
+    suspend fun setTtsBaseUrl(v: String) = set("tts_base_url", v)
+    suspend fun setTtsModel(v: String) = set("tts_model", v)
+    suspend fun setTtsVoice(v: String) = set("tts_voice", v)
+    suspend fun setTtsSpeed(v: Float) = set("tts_speed", v.coerceIn(0.5f, 2.0f))
+    suspend fun setTtsVol(v: Float) = set("tts_vol", v.coerceIn(0.1f, 10.0f))
+    suspend fun setTtsPitch(v: Int) = set("tts_pitch", v.coerceIn(-12, 12))
+    suspend fun setTtsEmotion(v: String) = set("tts_emotion", v)
+
     /** 多开实例计数（仅递增，供"生小肥鱼"分配 instanceId） */
     suspend fun nextInstanceId(): Int {
         val cur = read(K_INSTANCE_COUNT, 0)
@@ -307,6 +344,9 @@ class PetConfig(private val ctx: Context) {
 
     fun flowInt(key: String, default: Int) =
         flow(intPreferencesKey(key), default)
+
+    fun flowFloat(key: String, default: Float) =
+        flow(floatPreferencesKey(key), default)
 
     fun flowString(key: String, default: String) =
         flow(stringPreferencesKey(key), default)

@@ -47,6 +47,8 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
@@ -63,6 +65,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import com.dshpet.android.tts.TtsClient
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -857,6 +860,227 @@ private fun AiTab(ctx: android.content.Context, cfg: PetConfig, scope: kotlinx.c
                 scope.launch { cfg.setChatVerifySsl(!on) }
             }
         }
+        Section("语音合成（MiniMax TTS）") {
+            val ttsEnabled by cfg.flowBool("tts_enabled", false).collectAsState(initial = false)
+            val ttsAuto by cfg.flowBool("tts_auto_speak", false).collectAsState(initial = false)
+            val ttsKey by cfg.flowString("tts_api_key", "").collectAsState(initial = "")
+            val ttsBase by cfg.flowString("tts_base_url", "https://api.minimaxi.com").collectAsState(initial = "https://api.minimaxi.com")
+            val ttsModel by cfg.flowString("tts_model", "speech-2.6-hd").collectAsState(initial = "speech-2.6-hd")
+            val ttsVoice by cfg.flowString("tts_voice", "female-shaonv").collectAsState(initial = "female-shaonv")
+            val ttsSpeed by cfg.flowFloat("tts_speed", 1.0f).collectAsState(initial = 1.0f)
+            val ttsVol by cfg.flowFloat("tts_vol", 1.0f).collectAsState(initial = 1.0f)
+            val ttsPitch by cfg.flowInt("tts_pitch", 0).collectAsState(initial = 0)
+            val ttsEmotion by cfg.flowString("tts_emotion", "neutral").collectAsState(initial = "neutral")
+            var ttsMsg by remember { mutableStateOf<String?>(null) }
+            var voiceMenu by remember { mutableStateOf(false) }
+            var modelMenu by remember { mutableStateOf(false) }
+            var siteMenu by remember { mutableStateOf(false) }
+
+            SwitchRow(
+                "启用语音合成",
+                "用 MiniMax TTS 把 AI 回复朗读出来",
+                ttsEnabled,
+            ) { on -> scope.launch { cfg.setTtsEnabled(on) } }
+            if (ttsEnabled) {
+                SwitchRow(
+                    "回复后自动朗读",
+                    "AI 回答完成后自动用选定的音色朗读",
+                    ttsAuto,
+                ) { on -> scope.launch { cfg.setTtsAutoSpeak(on) } }
+
+                OutlinedTextField(
+                    ttsKey,
+                    { scope.launch { cfg.setTtsApiKey(it) } },
+                    label = { Text("MiniMax API Key") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                )
+
+                // 站点：中国站 / 国际站
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text("接口站点", Modifier.width(90.dp), fontSize = 13.sp)
+                    Box(Modifier.weight(1f)) {
+                        OutlinedButton(onClick = { siteMenu = true }) {
+                            Text(
+                                if (ttsBase.contains("minimaxi")) "中国站（api.minimaxi.com）" else "国际站（api.minimax.io）",
+                                fontSize = 12.sp,
+                            )
+                        }
+                        DropdownMenu(siteMenu, onDismissRequest = { siteMenu = false }) {
+                            DropdownMenuItem(
+                                text = { Text("中国站（api.minimaxi.com）", fontSize = 13.sp) },
+                                onClick = {
+                                    scope.launch { cfg.setTtsBaseUrl("https://api.minimaxi.com") }
+                                    siteMenu = false
+                                },
+                            )
+                            DropdownMenuItem(
+                                text = { Text("国际站（api.minimax.io）", fontSize = 13.sp) },
+                                onClick = {
+                                    scope.launch { cfg.setTtsBaseUrl("https://api.minimax.io") }
+                                    siteMenu = false
+                                },
+                            )
+                        }
+                    }
+                }
+
+                // 模型
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text("模型", Modifier.width(90.dp), fontSize = 13.sp)
+                    Box(Modifier.weight(1f)) {
+                        OutlinedButton(onClick = { modelMenu = true }) {
+                            Text(
+                                TtsClient.MODELS.firstOrNull { it.first == ttsModel }?.second ?: ttsModel,
+                                fontSize = 12.sp,
+                            )
+                        }
+                        DropdownMenu(modelMenu, onDismissRequest = { modelMenu = false }) {
+                            TtsClient.MODELS.forEach { (id, label) ->
+                                DropdownMenuItem(
+                                    text = { Text(label, fontSize = 13.sp) },
+                                    onClick = {
+                                        scope.launch { cfg.setTtsModel(id) }
+                                        modelMenu = false
+                                    },
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // 音色
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text("音色", Modifier.width(90.dp), fontSize = 13.sp)
+                    Box(Modifier.weight(1f)) {
+                        OutlinedButton(onClick = { voiceMenu = true }) {
+                            Text(TtsClient.Voices.labelOf(ttsVoice), fontSize = 12.sp)
+                        }
+                        DropdownMenu(voiceMenu, onDismissRequest = { voiceMenu = false }) {
+                            TtsClient.Voices.CHINESE.forEach { (id, label) ->
+                                DropdownMenuItem(
+                                    text = { Text(label, fontSize = 13.sp) },
+                                    onClick = {
+                                        scope.launch { cfg.setTtsVoice(id) }
+                                        voiceMenu = false
+                                    },
+                                )
+                            }
+                            HorizontalDivider()
+                            TtsClient.Voices.CANTONESE.forEach { (id, label) ->
+                                DropdownMenuItem(
+                                    text = { Text(label, fontSize = 13.sp) },
+                                    onClick = {
+                                        scope.launch { cfg.setTtsVoice(id) }
+                                        voiceMenu = false
+                                    },
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // 情感
+                Text("情感", fontSize = 13.sp, modifier = Modifier.padding(start = 20.dp, top = 4.dp))
+                androidx.compose.foundation.lazy.LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                ) {
+                    items(TtsClient.EMOTIONS) { (id, label) ->
+                        FilterChip(
+                            selected = id == ttsEmotion,
+                            onClick = { scope.launch { cfg.setTtsEmotion(id) } },
+                            label = { Text(label, fontSize = 11.sp) },
+                        )
+                    }
+                }
+
+                Row(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text("语速", Modifier.width(90.dp), fontSize = 13.sp)
+                    Slider(
+                        value = ttsSpeed,
+                        onValueChange = { scope.launch { cfg.setTtsSpeed(it) } },
+                        valueRange = 0.5f..2f,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Text("%.1fx".format(ttsSpeed), Modifier.width(44.dp), fontSize = 12.sp, textAlign = androidx.compose.ui.text.style.TextAlign.End)
+                }
+                Row(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text("音调", Modifier.width(90.dp), fontSize = 13.sp)
+                    Slider(
+                        value = ttsPitch.toFloat(),
+                        onValueChange = { scope.launch { cfg.setTtsPitch(it.toInt()) } },
+                        valueRange = -12f..12f,
+                        steps = 23,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Text("$ttsPitch", Modifier.width(44.dp), fontSize = 12.sp, textAlign = androidx.compose.ui.text.style.TextAlign.End)
+                }
+                Row(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text("音量", Modifier.width(90.dp), fontSize = 13.sp)
+                    Slider(
+                        value = ttsVol,
+                        onValueChange = { scope.launch { cfg.setTtsVol(it) } },
+                        valueRange = 0.5f..2f,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Text("%.1f".format(ttsVol), Modifier.width(44.dp), fontSize = 12.sp, textAlign = androidx.compose.ui.text.style.TextAlign.End)
+                }
+
+                Row(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    OutlinedButton(onClick = {
+                        ttsMsg = "合成中…"
+                        scope.launch {
+                            val r = TtsClient.synthesizeToFile(
+                                ctx,
+                                TtsClient.TtsCfg(
+                                    baseUrl = ttsBase,
+                                    apiKey = ttsKey,
+                                    model = ttsModel,
+                                    voiceId = ttsVoice,
+                                    speed = ttsSpeed,
+                                    vol = ttsVol,
+                                    pitch = ttsPitch,
+                                    emotion = ttsEmotion,
+                                ),
+                                "你好呀，我是欧鲸鲸。今天也要开心哦～",
+                            )
+                            r.fold(
+                                onSuccess = { file ->
+                                    ttsMsg = "合成成功，正在播放…"
+                                    com.dshpet.android.tts.TtsPlayer.play(file) { ttsMsg = null }
+                                },
+                                onFailure = { ttsMsg = "失败：${it.message}" },
+                            )
+                        }
+                    }) { Text("试听") }
+                    OutlinedButton(onClick = {
+                        com.dshpet.android.tts.TtsPlayer.stop()
+                        ttsMsg = null
+                    }) { Text("停止") }
+                }
+                ttsMsg?.let {
+                    Text(it, fontSize = 12.sp, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
+                }
+                Text(
+                    "API Key 在 platform.minimaxi.com 控制台创建（国内账号用中国站，国际账号用国际站）。" +
+                            "语音按官方规则计费：中文 1 字算 2 字符。",
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp),
+                )
+            }
+        }
+
         Section("工具") {
             Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedButton(onClick = {

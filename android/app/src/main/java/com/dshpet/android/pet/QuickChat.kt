@@ -24,6 +24,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.CircularProgressIndicator
@@ -68,6 +69,7 @@ class QuickChat(private val ctx: Context) {
     private var view: View? = null
     private var lp: WindowManager.LayoutParams? = null
     private val vm: ChatViewModel = ChatViewModel(ctx.applicationContext as Application)
+    private val config = PetConfig.get(ctx)
 
     fun show(anchorX: Int, anchorY: Int) {
         dismiss()
@@ -131,6 +133,8 @@ class QuickChat(private val ctx: Context) {
         val current by vm.current.collectAsState()
         val streaming by vm.streaming.collectAsState()
         val streamText by vm.streamText.collectAsState()
+        val speaking by vm.ttsSpeaking.collectAsState()
+        val ttsOn by config.flowBool("tts_enabled", false).collectAsState(initial = false)
         val messages = remember(current, streamText) { vm.displayedMessages() }
         var input by remember { mutableStateOf("") }
 
@@ -169,6 +173,27 @@ class QuickChat(private val ctx: Context) {
                             .padding(vertical = 4.dp)
                             .verticalScroll(rememberScrollState()),
                     )
+                    // 朗读按钮（仅在启用 TTS 时出现）
+                    if (ttsOn) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            IconButton(
+                                onClick = { if (speaking) vm.stopSpeaking() else vm.speak(reply.content) },
+                                modifier = Modifier.size(24.dp),
+                            ) {
+                                Icon(
+                                    if (speaking) Icons.Filled.Close else Icons.Filled.PlayArrow,
+                                    contentDescription = if (speaking) "停止朗读" else "朗读",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(15.dp),
+                                )
+                            }
+                            Text(
+                                if (speaking) "正在朗读…" else "朗读",
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
                 }
                 if (streaming) {
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 4.dp)) {
