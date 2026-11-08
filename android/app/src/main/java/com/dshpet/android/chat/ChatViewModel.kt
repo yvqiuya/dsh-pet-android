@@ -161,6 +161,8 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
                 if (!auto) _ttsStatus.value = "语音合成未启用（设置 → AI 对话 → 语音合成）"
                 return@launch
             }
+            // 自动朗读还要看「回复后自动朗读」开关；手动朗读（auto=false）不受它影响
+            if (auto && !config.ttsAutoSpeak()) return@launch
             val key = config.ttsApiKey()
             if (key.isBlank()) {
                 if (!auto) _ttsStatus.value = "未配置 MiniMax API Key"
