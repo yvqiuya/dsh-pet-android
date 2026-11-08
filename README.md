@@ -33,6 +33,48 @@ SHA-256 (证书) = df1c7d166c39804b538cbcd226e476e495983681b87cf36fa7fccd7afaa8b
 
 ---
 
+## 新增：MiniMax TTS 语音合成
+
+桌宠现在可以把 AI 回复朗读出来。
+
+| 能力 | 说明 |
+|---|---|
+| 设置项 | 设置 → AI 对话 → **语音合成（MiniMax TTS）** |
+| 自动朗读 | 打开「回复后自动朗读」，每次 AI 回复完成后自动合成并播放 |
+| 手动朗读 | 独立聊天页 / 桌宠气泡 / 快捷聊天 三处 AI 消息旁都有「▶ 朗读」按钮，播放中变「✕ 停止」 |
+| 试听 | 设置页可「试听」当前音色 |
+| 音色 | 58 个中文普通话 + 6 个粤语音色，可调语速 / 音调 / 音量 / 情感 |
+
+### 用法
+
+1. 到 [platform.minimaxi.com](https://platform.minimaxi.com)（国际站 [platform.minimax.io](https://platform.minimax.io)）申请 API Key。
+2. 设置 → AI 对话 → 语音合成：打开 **启用语音合成** → 粘贴 **API Key** → 选 **接口站点**
+   （中国站 `api.minimaxi.com` / 国际站 `api.minimax.io`）→ 选 **模型** / **音色** → 点 **试听** 验证。
+
+> API Key 只存本机 SharedPreferences，不上传任何服务器。
+
+### 接口
+
+- 端点：`POST {base}/v1/t2a_v2`，鉴权 `Authorization: Bearer <API Key>`
+- 关键参数：`model` / `text` / `stream:false` / `language_boost:"auto"` / `output_format:"hex"`
+  / `voice_setting{voice_id,speed,vol,pitch,emotion}`
+  / `audio_setting{sample_rate:32000,bitrate:128000,format:mp3,channel:1}`
+- 响应 `data.audio` 是 hex 字符串；**HTTP 200 也会带业务错误**，错误码在 `base_resp.status_code`
+  （1002/1045 限流、1004 Key 失效、1008 余额不足、1027 文本过长…），代码里全部中文化。
+
+### 代码位置
+
+| 文件 | 作用 |
+|---|---|
+| `android/app/src/main/java/com/dshpet/android/tts/TtsClient.kt` | 请求 MiniMax、解析 hex、写缓存、清洗朗读文本、错误码中文化 |
+| `android/app/src/main/java/com/dshpet/android/tts/TtsPlayer.kt` | 单例 MediaPlayer（同一时刻只播一段） |
+| `android/app/src/main/java/com/dshpet/android/chat/ChatViewModel.kt` | `speak()` / `stopSpeaking()`，回复完成后自动朗读 |
+| `android/app/src/main/java/com/dshpet/android/data/PetConfig.kt` | `tts_*` 配置项读写 |
+| `android/app/src/main/java/com/dshpet/android/MainActivity.kt` | 设置页「语音合成」分区 |
+
+
+---
+
 ## 本仓库相对上游修的三处问题
 
 ### 1. 聊天回复开头出现成片「nullnullnull…」
